@@ -1,0 +1,45 @@
+name: 'Maven'
+description: 'Configure Maven & Java'
+
+inputs:
+  java-version:
+    description: 'The Java version to set up'
+    default: '24'
+    required: false
+
+  java-distribution:
+    description: 'The Java distribution to set up'
+    default: 'temurin'
+    required: false
+
+  maven-version:
+    description: 'The Maven version to set up'
+    default: '3.9.6'
+    required: false
+
+  maven-cache:
+    description: 'Set up Maven cache'
+    default: 'true'
+    required: false
+
+runs:
+  using: 'composite'
+
+  steps:
+    - name: 'Setup Java version ${{ inputs.java-version }} - distribution: ${{ inputs.java-distribution }}'
+      uses: actions/setup-java@v4
+      with:
+        distribution: '${{ inputs.java-distribution }}'
+        java-version: '${{ inputs.java-version }}'
+
+    - name: 'Setup Maven'
+      uses: stCarolas/setup-maven@v5
+      with:
+        maven-version: '${{ inputs.maven-version }}'
+
+    - name: 'Setup Maven Cache'
+      uses: actions/cache@v4
+      if: inputs.maven-cache == 'true'
+      with:
+        path: '~/.m2/repository'
+        key: ${{ runner.os }}-jdk${{ inputs.java-version }}-${{ inputs.java-distribution }}-maven-${{ hashFiles('**/pom.xml') }}
