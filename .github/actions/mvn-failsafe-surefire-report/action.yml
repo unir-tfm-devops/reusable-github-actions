@@ -49,7 +49,7 @@ runs:
       uses: marocchino/sticky-pull-request-comment@v2
       with:
         header: reports
-        hide_and_recreate: true
+        recreate: true
         hide_classify: 'OUTDATED'
         message: ${{ inputs.initial-comment-message }}
 
