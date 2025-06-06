@@ -1,0 +1,47 @@
+name: "Docker Build & Push to ECR"
+description: "Builds a Docker image and pushes it to Amazon ECR"
+
+inputs:
+  image-repo-name:
+    description: "The name of the ECR repository to push the Docker image to"
+    required: true
+  image-tag:
+    description: "The tag for the Docker image"
+    required: true
+
+runs:
+  using: composite
+
+  steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4.2.1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+        aws-region: us-east-1
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build image tag
+      shell: bash
+      id: vars
+      run: |
+        ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+        IMAGE_REPO_NAME=unir-tfm-docker-repo
+        REVISION=${{ inputs.image-tag }}
+        IMAGE_TAG=${REVISION:-latest}
+        IMAGE_URI=$ECR_REGISTRY/$IMAGE_REPO_NAME:$IMAGE_TAG
+        
+        echo "image_uri=$IMAGE_URI" >> $GITHUB_OUTPUT
+
+    - name: Build Docker image
+      shell: bash
+      run: |
+        docker build -t ${{ steps.vars.outputs.image_uri }} .
+
+    - name: Push Docker image
+      shell: bash
+      run: |
+        docker push ${{ steps.vars.outputs.image_uri }}
