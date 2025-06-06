@@ -8,6 +8,12 @@ inputs:
   image-tag:
     description: "The tag for the Docker image"
     required: true
+  aws-access-key:
+    description: "AWS Access Key ID"
+    required: true
+  aws-secret-key:
+    description: "AWS Secret Access Key"
+    required: true
 
 runs:
   using: composite
@@ -16,8 +22,8 @@ runs:
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4.2.1
       with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+        aws-access-key-id: ${{ inputs.aws-access-key }}
+        aws-secret-access-key: ${{ inputs.aws-secret-key }}
         aws-region: us-east-1
 
     - name: Login to Amazon ECR
