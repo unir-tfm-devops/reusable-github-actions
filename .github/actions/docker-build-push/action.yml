@@ -35,7 +35,7 @@ runs:
       id: vars
       run: |
         ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
-        IMAGE_REPO_NAME=unir-tfm-docker-repo
+        IMAGE_REPO_NAME=${{ inputs.image-repo-name }}
         REVISION=${{ inputs.image-tag }}
         IMAGE_TAG=${REVISION:-latest}
         IMAGE_URI=$ECR_REGISTRY/$IMAGE_REPO_NAME:$IMAGE_TAG
