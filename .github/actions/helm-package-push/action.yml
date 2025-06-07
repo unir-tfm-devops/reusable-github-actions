@@ -9,6 +9,9 @@ inputs:
   chart-version:
     description: 'The version of the Helm chart to package'
     required: true
+  chartmuseum-url:
+    description: 'The URL of the ChartMuseum repository'
+    required: true
 
 runs:
   using: composite
@@ -18,10 +21,12 @@ runs:
       uses: azure/setup-helm@v4
 
     - name: Install helm-push plugin
+      shell: bash
       run: helm plugin install https://github.com/chartmuseum/helm-push
 
     - name: Add ChartMuseum repo
-      run: helm repo add chartmuseum ${{ vars.CHARTMUSEUM_URL }}
+      shell: bash
+      run: helm repo add chartmuseum ${{ inputs.chartmuseum-url }}
 
     - name: Package Helm chart
       shell: bash
