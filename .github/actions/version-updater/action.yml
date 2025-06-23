@@ -1,0 +1,50 @@
+name: 'Version Updater'
+description: 'Update the version of the application in the workloads repository to deploy the service using ArgoCD'
+
+inputs:
+  version:
+    description: 'Version to update in the workloads repository'
+    required: true
+  app-id:
+    description: 'GitHub App ID'
+    required: true
+  private-key:
+    description: 'GitHub App private key'
+    required: true
+
+runs: 
+  using: composite
+
+  steps:
+    - name: Get Token From GitHub APP
+      id: get_token
+      uses: actions/create-github-app-token@v1
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        owner: ${{ github.repository_owner }}
+
+    - name: Checkout Workloads Repository
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ github.repository_owner }}/eks-workloads
+        token: ${{ steps.get_token.outputs.token }}
+        path: eks-workloads
+
+    - name: Update Chart.yaml Version
+      shell: bash
+      working-directory: eks-workloads
+      run: |
+        yq eval ".dependencies[0].version = \"${{ inputs.version }}\"" -i environments/test/applications/spring-boot-template/Chart.yaml
+
+    - name: Update values.yaml Version
+      shell: bash
+      working-directory: eks-workloads
+      run: |
+        yq eval ".spring-boot-template.image.tag = \"${{ inputs.version }}\"" -i environments/test/applications/spring-boot-template/values.yaml
+
+    - name: Commit and Push Changes
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        working-directory: eks-workloads
+        commit_message: "Update spring-boot-template version to ${{ inputs.version }}"
