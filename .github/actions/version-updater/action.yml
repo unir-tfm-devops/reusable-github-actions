@@ -67,6 +67,9 @@ runs:
     - name: Commit and Push Changes
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
+        commit_message: "Update ${{ inputs.app-name }} to ${{ inputs.version }} in ${{ inputs.environment }} environment"
         branch: main
         repository: ${{ steps.repo_name.outputs.repository }}
-        commit_message: "Update ${{ inputs.app-name }} to ${{ inputs.version }} in ${{ inputs.environment }} environment"
+        commit_user_name: "unir-tfm-devops[bot]"
+        commit_user_email: "unir-tfm-devops[bot]@users.noreply.github.com"
+        commit_author: "unir-tfm-devops[bot] <unir-tfm-devops[bot]@users.noreply.github.com>"
