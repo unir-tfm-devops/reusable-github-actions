@@ -1,0 +1,41 @@
+on:
+  workflow_call:
+    inputs:
+      check-branch-name:
+        description: "Whether to check the branch name"
+        required: false
+        default: true
+        type: boolean
+      enforce-label:
+        description: "Whether to enforce the label"
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  check_branch_name:
+    name: Check branch name
+    runs-on: [ubuntu-latest]
+    if: ${{ inputs.check-branch-name }}
+    steps:
+      - name: Checking name
+        id: check-name
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+        run: |
+          if [[ $BRANCH_NAME =~ ^(bug/.+)|(feature/.+)|(fix/.+)|(enhancement/.+)|(documentation/.+)|(release/.+)$ ]]; then
+              echo ::set-output name=match::true
+          fi
+      - name: Exiting if not true
+        if: steps.check-name.outputs.match != 'true'
+        run: exit 1
+
+  enforce_label:
+    name: Enforce tags
+    runs-on: [ubuntu-latest]
+    if: ${{ inputs.enforce-label }}
+    steps:
+      - uses: yogevbd/enforce-label-action@2.2.2
+        with:
+          REQUIRED_LABELS_ANY: "breaking-change,bug,documentation,enhancement,feature,deprecation,dependency"
+          REQUIRED_LABELS_ANY_DESCRIPTION: "Select at least one label in ['breaking-change', 'bug', 'documentation', 'enhancement', 'feature', 'deprecation', 'dependency']"
