@@ -5,17 +5,38 @@ inputs:
   version:
     description: 'Version to update in the workloads repository'
     required: true
+  app-name:
+    description: 'Name of the application to update'
+    required: true
+  environment:
+    description: 'Environment where the application is deployed'
+    required: false
+    default: 'test'
+  cloud:
+    description: 'Cloud provider (aws or azure)'
+    required: false
+    default: 'aws'
   app-id:
     description: 'GitHub App ID'
     required: true
   private-key:
     description: 'GitHub App private key'
     required: true
-
+  
 runs: 
   using: composite
 
   steps:
+    - name: Determine Repository Name
+      id: repo_name
+      shell: bash
+      run: |
+        if [ "${{ inputs.cloud }}" = "aws" ]; then
+          echo "repository=eks-workloads" >> $GITHUB_OUTPUT
+        else
+          echo "repository=aks-workloads" >> $GITHUB_OUTPUT
+        fi
+
     - name: Get Token From GitHub APP
       id: get_token
       uses: actions/create-github-app-token@v1
@@ -27,25 +48,25 @@ runs:
     - name: Checkout Workloads Repository
       uses: actions/checkout@v4
       with:
-        repository: ${{ github.repository_owner }}/eks-workloads
+        repository: ${{ github.repository_owner }}/${{ steps.repo_name.outputs.repository }}
         token: ${{ steps.get_token.outputs.token }}
-        path: eks-workloads
+        path: ${{ steps.repo_name.outputs.repository }}
 
     - name: Update Chart.yaml Version
       shell: bash
-      working-directory: eks-workloads
+      working-directory: ${{ steps.repo_name.outputs.repository }}
       run: |
-        yq eval ".dependencies[0].version = \"${{ inputs.version }}\"" -i environments/test/applications/spring-boot-template/Chart.yaml
+        yq eval ".dependencies[0].version = \"${{ inputs.version }}\"" -i environments/${{ inputs.environment }}/applications/${{ inputs.app-name }}/Chart.yaml
 
     - name: Update values.yaml Version
       shell: bash
-      working-directory: eks-workloads
+      working-directory: ${{ steps.repo_name.outputs.repository }}
       run: |
-        yq eval ".spring-boot-template.image.tag = \"${{ inputs.version }}\"" -i environments/test/applications/spring-boot-template/values.yaml
+        yq eval ".${{ inputs.app-name }}.image.tag = \"${{ inputs.version }}\"" -i environments/${{ inputs.environment }}/applications/${{ inputs.app-name }}/values.yaml
 
     - name: Commit and Push Changes
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
         branch: main
-        repository: eks-workloads
-        commit_message: "Update spring-boot-template version to ${{ inputs.version }}"
+        repository: ${{ steps.repo_name.outputs.repository }}
+        commit_message: "Update ${{ inputs.app-name }} to ${{ inputs.version }} in ${{ inputs.environment }} environment"
