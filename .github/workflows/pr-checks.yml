@@ -23,7 +23,7 @@ jobs:
         env:
           BRANCH_NAME: ${{ github.head_ref }}
         run: |
-          if [[ $BRANCH_NAME =~ ^(bug/.+)|(feature/.+)|(fix/.+)|(enhancement/.+)|(documentation/.+)|(release/.+)$ ]]; then
+          if [[ $BRANCH_NAME =~ ^(bug/.+)|(dependabot/.+)|(feature/.+)|(fix/.+)|(enhancement/.+)|(documentation/.+)|(release/.+)$ ]]; then
               echo ::set-output name=match::true
           fi
       - name: Exiting if not true
