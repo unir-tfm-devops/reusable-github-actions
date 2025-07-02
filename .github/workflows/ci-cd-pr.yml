@@ -109,7 +109,7 @@ jobs:
         if: always() && (inputs.run-unit-tests || inputs.run-integration-tests)
         uses: unir-tfm-devops/reusable-github-actions/.github/actions/mvn-failsafe-surefire-report@main
         with:
-          app-id: ${{ vars.UNIR_TFM_APP_ID }}
+          app-id: ${{ secrets.UNIR_TFM_APP_ID }}
           private-key: ${{ secrets.UNIR_TFM_APP_PRIVATE_KEY }}
 
   sonar:

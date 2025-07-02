@@ -175,5 +175,5 @@ jobs:
           app-name: ${{ inputs.app-name }}
           environment: "production"
           cloud: "aws"
-          app-id: ${{ vars.UNIR_TFM_APP_ID }}
+          app-id: ${{ secrets.UNIR_TFM_APP_ID }}
           private-key: ${{ secrets.UNIR_TFM_APP_PRIVATE_KEY }}
