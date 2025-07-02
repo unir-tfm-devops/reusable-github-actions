@@ -35,6 +35,14 @@ inputs:
     required: false
     default: Integration tests report
 
+  app-id:
+    description: The ID of the GitHub App
+    required: true
+  
+  private-key:
+    description: The private key of the GitHub App
+    required: true
+
 runs:
   using: composite
 
@@ -45,13 +53,24 @@ runs:
       with:
         script: core.setFailed('This composite action should be only used on pull_request event')
 
+    - name: Get Token From GitHub APP
+      id: get_token
+      uses: actions/create-github-app-token@v1
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        owner: ${{ github.repository_owner }}
+
     - name: (Re)create Comment
       uses: marocchino/sticky-pull-request-comment@v2
+      env:
+        GITHUB_TOKEN: ${{ steps.get_token.outputs.token }}
       with:
         header: reports
         recreate: true
         hide_classify: 'OUTDATED'
         message: ${{ inputs.initial-comment-message }}
+        GITHUB_TOKEN: ${{ steps.get_token.outputs.token }}
 
     - name: Generate Unit Tests Report
       id: generate-report-unit
@@ -68,8 +87,11 @@ runs:
 
     - name: Update PR status comment (unit tests)
       uses: marocchino/sticky-pull-request-comment@v2
+      env:
+        GITHUB_TOKEN: ${{ steps.get_token.outputs.token }}
       if: ${{ steps.generate-report-unit.conclusion == 'success' }}
       with:
+        GITHUB_TOKEN: ${{ steps.get_token.outputs.token }}
         append: true
         header: reports
         message: ${{ format(inputs.comment-message , inputs.unit-tests-title, steps.generate-report-unit.outputs.passed, steps.generate-report-unit.outputs.failed, steps.generate-report-unit.outputs.skipped, steps.generate-report-unit.outputs.runHtmlUrl) }}
@@ -89,8 +111,11 @@ runs:
 
     - name: Update PR status comment (integration tests)
       uses: marocchino/sticky-pull-request-comment@v2
+      env:
+        GITHUB_TOKEN: ${{ steps.get_token.outputs.token }}
       if: ${{ steps.generate-report-integration.conclusion == 'success' }}
       with:
+        GITHUB_TOKEN: ${{ steps.get_token.outputs.token }}
         append: true
         header: reports
         message: ${{ format(inputs.comment-message , inputs.integration-tests-title, steps.generate-report-integration.outputs.passed, steps.generate-report-integration.outputs.failed, steps.generate-report-integration.outputs.skipped, steps.generate-report-integration.outputs.runHtmlUrl) }}
