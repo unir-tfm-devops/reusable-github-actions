@@ -1,0 +1,178 @@
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: "Node.js version to use"
+        required: false
+        default: "20"
+        type: string
+      run-tests:
+        description: "Whether to run tests"
+        required: false
+        default: true
+        type: boolean
+      run-helm-validation:
+        description: "Whether to run Helm validation"
+        required: false
+        default: true
+        type: boolean
+      run-sonar-analysis:
+        description: "Whether to run SonarQube analysis"
+        required: false
+        default: true
+        type: boolean
+      image-repo-name:
+        description: "Name of the Docker image repository"
+        required: true
+        type: string
+      app-name:
+        description: "Name of the ArgoCD application"
+        required: true
+        type: string
+
+jobs:
+  lint:
+    name: Lint Check
+    runs-on: [ubuntu-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting
+        run: npm run lint
+
+  test:
+    name: Tests
+    runs-on: [ubuntu-latest]
+    needs: [lint]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Tests
+        if: ${{ inputs.run-tests }}
+        run: npm run test:coverage
+
+      - name: Upload coverage reports
+        if: ${{ inputs.run-tests }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: coverage
+          if-no-files-found: warn
+
+  sonar:
+    name: SonarQube Analysis
+    runs-on: [ubuntu-latest]
+    needs: [test]
+    if: ${{ inputs.run-sonar-analysis }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download coverage reports
+        if: ${{ inputs.run-tests }}
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-reports
+          path: coverage
+
+      - name: SonarQubeScan
+        uses: SonarSource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  docker:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: [sonar]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+
+      - name: Docker build & push
+        uses: unir-tfm-devops/reusable-github-actions/.github/actions/docker-build-push@main
+        with:
+          image-repo-name: ${{ inputs.image-repo-name }}
+          image-tag: ${{ github.event.release.tag_name }}
+          aws-access-key: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-key: ${{ secrets.AWS_SECRET_KEY }}
+
+  helm:
+    name: Helm Package & Push
+    runs-on: ubuntu-latest
+    needs: [sonar]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Helm package & push
+        uses: unir-tfm-devops/reusable-github-actions/.github/actions/helm-package-push@main
+        with:
+          chart-version: ${{ github.event.release.tag_name }}
+          chartmuseum-url: ${{ secrets.CHARTMUSEUM_URL }}
+
+  deploy-test:
+    name: Deploy to Test
+    runs-on: ubuntu-latest
+    needs: [docker, helm]
+    environment: test
+    steps:
+      - name: Update version in test environment
+        uses: unir-tfm-devops/reusable-github-actions/.github/actions/version-updater@main
+        with:
+          version: ${{ github.event.release.tag_name }}
+          app-name: ${{ inputs.app-name }}
+          environment: "test"
+          cloud: "aws"
+          app-id: ${{ secrets.UNIR_TFM_APP_ID }}
+          private-key: ${{ secrets.UNIR_TFM_APP_PRIVATE_KEY }}
+
+  deploy-prod:
+    name: Deploy to Production
+    runs-on: [ubuntu-latest]
+    needs: [deploy-test]
+    environment: production
+    steps:
+      - name: Update version in production environment
+        uses: unir-tfm-devops/reusable-github-actions/.github/actions/version-updater@main
+        with:
+          version: ${{ github.event.release.tag_name }}
+          app-name: ${{ inputs.app-name }}
+          environment: "prod"
+          cloud: "aws"
+          app-id: ${{ secrets.UNIR_TFM_APP_ID }}
+          private-key: ${{ secrets.UNIR_TFM_APP_PRIVATE_KEY }}
