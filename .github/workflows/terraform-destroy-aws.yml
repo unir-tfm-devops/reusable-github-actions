@@ -2,6 +2,12 @@ name: "Terraform Destroy"
 
 on:
   workflow_call:
+    inputs:
+      working_directory:
+        description: "Working directory to use"
+        required: false
+        type: string
+        default: "."
 
 jobs:
   destroy:
@@ -23,9 +29,11 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: "Terraform Init"
+        working-directory: ${{ inputs.working_directory }}
         run: terraform init -input=false
 
       - name: "Terraform Destroy"
+        working-directory: ${{ inputs.working_directory }}
         run: terraform destroy -auto-approve -input=false
         env:
           TF_VAR_aws_access_key: ${{ secrets.AWS_ACCESS_KEY }}

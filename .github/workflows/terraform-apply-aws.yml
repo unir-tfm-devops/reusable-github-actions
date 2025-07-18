@@ -2,6 +2,12 @@ name: "Terraform Apply"
 
 on:
   workflow_call:
+    inputs:
+      working_directory:
+        description: "Working directory to use"
+        required: false
+        type: string
+        default: "."
 
 jobs:
   terraform:
@@ -30,21 +36,26 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: "Terraform Format Check"
+        working-directory: ${{ inputs.working_directory }}
         run: terraform fmt -check
 
       - name: "Terraform Init"
+        working-directory: ${{ inputs.working_directory }}
         run: terraform init -input=false
 
       - name: "Terraform Validate"
+        working-directory: ${{ inputs.working_directory }}
         run: terraform validate
 
       - name: "Terraform Plan"
+        working-directory: ${{ inputs.working_directory }}
         run: terraform plan -input=false
         env:
           TF_VAR_aws_access_key: ${{ secrets.AWS_ACCESS_KEY }}
           TF_VAR_aws_secret_key: ${{ secrets.AWS_SECRET_KEY }}
 
       - name: "Terraform Apply"
+        working-directory: ${{ inputs.working_directory }}
         run: terraform apply -auto-approve -input=false
         env:
           TF_VAR_aws_access_key: ${{ secrets.AWS_ACCESS_KEY }}
