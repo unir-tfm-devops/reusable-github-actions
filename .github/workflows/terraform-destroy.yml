@@ -2,23 +2,52 @@ name: "Terraform Destroy"
 
 on:
   workflow_call:
+    inputs:
+      cloud_provider:
+        description: "Cloud provider to use (aws or azure)"
+        required: true
+        type: string
+        default: "aws"
+      working_directory:
+        description: "Working directory to use"
+        required: false
+        type: string
+        default: "."
 
 jobs:
-  destroy:
-    name: "Terraform Destroy"
+  terraform:
+    name: "Terraform Destroy - ${{ inputs.cloud_provider }}"
     runs-on: ubuntu-latest
-
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@v4
 
+      - name: "Get Token From GitHub APP"
+        id: get_token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.UNIR_TFM_APP_ID }}
+          private-key: ${{ secrets.UNIR_TFM_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      # AWS Configuration
+      - name: "Configure AWS credentials"
+        if: inputs.cloud_provider == 'aws'
+        uses: aws-actions/configure-aws-credentials@v4.2.1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: us-east-1
+
+      # Azure Configuration
       - name: "Build Azure credentials JSON"
+        if: inputs.cloud_provider == 'azure'
         id: build_creds
         run: |
           CREDS_JSON=$(jq -nc --arg clientSecret "$AZURE_CLIENT_SECRET" \
-                           --arg subscriptionId "$AZURE_SUBSCRIPTION_ID" \
-                           --arg tenantId "$AZURE_TENANT_ID" \
-                           --arg clientId "$AZURE_CLIENT_ID" \
+                            --arg subscriptionId "$AZURE_SUBSCRIPTION_ID" \
+                            --arg tenantId "$AZURE_TENANT_ID" \
+                            --arg clientId "$AZURE_CLIENT_ID" \
           '{clientSecret: $clientSecret, subscriptionId: $subscriptionId, tenantId: $tenantId, clientId: $clientId}')
           echo "creds=$CREDS_JSON" >> $GITHUB_OUTPUT
         env:
@@ -28,6 +57,7 @@ jobs:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
 
       - name: "Configure Azure credentials"
+        if: inputs.cloud_provider == 'azure'
         uses: azure/login@v2
         with:
           creds: ${{ steps.build_creds.outputs.creds }}
@@ -36,11 +66,17 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: "Terraform Init"
+        working-directory: ${{ inputs.working_directory }}
         run: terraform init -input=false
 
       - name: "Terraform Destroy"
+        working-directory: ${{ inputs.working_directory }}
         run: terraform destroy -auto-approve -input=false
         env:
+          # AWS variables
+          TF_VAR_aws_access_key: ${{ secrets.AWS_ACCESS_KEY }}
+          TF_VAR_aws_secret_key: ${{ secrets.AWS_SECRET_KEY }}
+          # Azure variables
           ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
