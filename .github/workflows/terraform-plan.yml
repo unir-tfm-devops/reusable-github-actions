@@ -79,7 +79,7 @@ jobs:
 
       - name: "Terraform Plan"
         working-directory: ${{ inputs.working_directory }}
-        run: terraform plan -input=false
+        run: terraform plan -out .planfile -input=false
         env:
           # AWS variables
           TF_VAR_aws_access_key: ${{ secrets.AWS_ACCESS_KEY }}
@@ -93,3 +93,11 @@ jobs:
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Post PR comment
+        if: always()
+        uses: borchero/terraform-plan-comment@v2
+        with:
+          token: ${{ steps.get_token.outputs.token }}
+          working-directory: ${{ inputs.working_directory }}
+          planfile: .planfile
