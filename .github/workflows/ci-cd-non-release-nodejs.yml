@@ -157,6 +157,7 @@ jobs:
       - name: Docker build & push
         uses: unir-tfm-devops/reusable-github-actions/.github/actions/docker-build-push@main
         with:
+          cloud-provider: aws
           image-repo-name: ${{ inputs.image-repo-name }}
           image-tag: ${{ needs.sonar.outputs.revision }}
           aws-access-key: ${{ secrets.AWS_ACCESS_KEY }}
