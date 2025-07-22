@@ -1,25 +1,48 @@
-name: "Docker Build & Push to ECR"
-description: "Builds a Docker image and pushes it to Amazon ECR"
+name: "Docker Build & Push"
+description: "Builds a Docker image and pushes it to Azure Container Registry (ACR) or Amazon ECR"
 
 inputs:
+  cloud-provider:
+    description: "Cloud provider to push to (aws or azure)"
+    required: true
+    default: "aws"
   image-repo-name:
-    description: "The name of the ECR repository to push the Docker image to"
+    description: "The name of the repository to push the Docker image to"
     required: true
   image-tag:
     description: "The tag for the Docker image"
     required: true
+  # ACR specific inputs
+  azure-client-id:
+    description: "Azure Client ID"
+    required: false
+  azure-client-secret:
+    description: "Azure Client Secret"
+    required: false
+  # ECR specific inputs
   aws-access-key:
     description: "AWS Access Key ID"
-    required: true
+    required: false
   aws-secret-key:
     description: "AWS Secret Access Key"
-    required: true
+    required: false
 
 runs:
   using: composite
 
   steps:
+    # ACR Authentication
+    - name: Log in to ACR
+      if: inputs.cloud-provider == 'azure'
+      uses: azure/docker-login@v2
+      with:
+        login-server: unirtfmdevops.azurecr.io
+        username: ${{ inputs.azure-client-id }}
+        password: ${{ inputs.azure-client-secret }}
+
+    # ECR Authentication
     - name: Configure AWS credentials
+      if: inputs.cloud-provider == 'aws'
       uses: aws-actions/configure-aws-credentials@v4.2.1
       with:
         aws-access-key-id: ${{ inputs.aws-access-key }}
@@ -27,26 +50,35 @@ runs:
         aws-region: us-east-1
 
     - name: Login to Amazon ECR
+      if: inputs.cloud-provider == 'aws'
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
+    # Build image tag
     - name: Build image tag
       shell: bash
       id: vars
       run: |
-        ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+        if [ "${{ inputs.cloud-provider }}" = "azure" ]; then
+          ECR_REGISTRY=unirtfmdevops.azurecr.io
+        else
+          ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+        fi
+
         IMAGE_REPO_NAME=${{ inputs.image-repo-name }}
         REVISION=${{ inputs.image-tag }}
         IMAGE_TAG=${REVISION:-latest}
-        IMAGE_URI=$ECR_REGISTRY/$IMAGE_REPO_NAME:$IMAGE_TAG
-        
+        IMAGE_URI=$ECR_REGISTRY/${IMAGE_REPO_NAME}:${IMAGE_TAG}
+
         echo "image_uri=$IMAGE_URI" >> $GITHUB_OUTPUT
 
+    # Build Docker image
     - name: Build Docker image
       shell: bash
       run: |
         docker build -t ${{ steps.vars.outputs.image_uri }} .
 
+    # Push Docker image
     - name: Push Docker image
       shell: bash
       run: |
