@@ -136,6 +136,8 @@ jobs:
           image-tag: ${{ github.event.release.tag_name }}
           aws-access-key: ${{ secrets.AWS_ACCESS_KEY }}
           aws-secret-key: ${{ secrets.AWS_SECRET_KEY }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
 
   helm:
     name: Helm Package & Push
