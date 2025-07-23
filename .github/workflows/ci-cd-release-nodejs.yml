@@ -31,7 +31,7 @@ on:
         type: string
       cloud-provider:
         description: "Cloud provider"
-        required: true
+        required: false
         type: string
         default: "azure"
 
