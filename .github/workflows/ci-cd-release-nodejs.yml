@@ -29,6 +29,11 @@ on:
         description: "Name of the ArgoCD application"
         required: true
         type: string
+      cloud-provider:
+        description: "Cloud provider"
+        required: true
+        type: string
+        default: "azure"
 
 jobs:
   lint:
@@ -126,7 +131,7 @@ jobs:
       - name: Docker build & push
         uses: unir-tfm-devops/reusable-github-actions/.github/actions/docker-build-push@main
         with:
-          cloud-provider: aws
+          cloud-provider: ${{ inputs.cloud-provider }}
           image-repo-name: ${{ inputs.image-repo-name }}
           image-tag: ${{ github.event.release.tag_name }}
           aws-access-key: ${{ secrets.AWS_ACCESS_KEY }}
@@ -158,7 +163,7 @@ jobs:
           version: ${{ github.event.release.tag_name }}
           app-name: ${{ inputs.app-name }}
           environment: "test"
-          cloud: "aws"
+          cloud: ${{ inputs.cloud-provider }}
           app-id: ${{ secrets.UNIR_TFM_APP_ID }}
           private-key: ${{ secrets.UNIR_TFM_APP_PRIVATE_KEY }}
 
@@ -174,6 +179,6 @@ jobs:
           version: ${{ github.event.release.tag_name }}
           app-name: ${{ inputs.app-name }}
           environment: "prod"
-          cloud: "aws"
+          cloud: ${{ inputs.cloud-provider }}
           app-id: ${{ secrets.UNIR_TFM_APP_ID }}
           private-key: ${{ secrets.UNIR_TFM_APP_PRIVATE_KEY }}
